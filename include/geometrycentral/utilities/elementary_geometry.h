@@ -6,6 +6,11 @@
 
 namespace geometrycentral {
 
+
+// ======================================================
+// ======== 2 dimensional
+// ======================================================
+
 // Computes the area of a triangle using Heron's rule. Will fail silently with 0 if inputs to not satisfy triangle
 // inequality
 double triangleArea(double lA, double lB, double lC);
@@ -18,9 +23,9 @@ Vector2 layoutTriangleVertex(const Vector2& pA, const Vector2& pB, const double&
 
 double pointLineSegmentDistance(Vector2 p, Vector2 lineA, Vector2 lineB);
 
+
 // === Line-line intersections
 
-double pointLineSegmentDistance(Vector2 p, Vector2 lineA, Vector2 lineB);
 
 // TODO for now, makes no special attempt at numerical robustness. In particular, may behave badly for colinear lines.
 struct SegmentSegmentIntersectionResult2D {
@@ -40,6 +45,15 @@ struct RaySegmentIntersectionResult2D {
 RaySegmentIntersectionResult2D raySegmentIntersection(Vector2 rayStart, Vector2 rayDir, Vector2 lineStart,
                                                       Vector2 lineEnd);
 
+
+// ======================================================
+// ======== 3 dimensional
+// ======================================================
+
+// Compute the distance to a line segment, returning either distance, location of the nearest point along the line, or
+// both.
+double pointLineSegmentDistance(Vector3 p, Vector3 lineA, Vector3 lineB);
+double pointLineSegmentNeaestLocation(Vector3 p, Vector3 lineA, Vector3 lineB);
 
 } // namespace geometrycentral
 
