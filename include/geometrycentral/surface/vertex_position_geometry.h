@@ -16,23 +16,28 @@ public:
   VertexPositionGeometry(SurfaceMesh& mesh_);
 
   // Construct from positions
-  VertexPositionGeometry(SurfaceMesh& mesh_, const VertexData<Vector3>& inputVertexPositions);
-  
+  VertexPositionGeometry(SurfaceMesh& mesh_,
+                         const VertexData<Vector3>& inputVertexPositions);
+
   // Construct from positions (stored in an Eigen matrix)
   template <typename T>
-  VertexPositionGeometry(SurfaceMesh& mesh_, const Eigen::MatrixBase<T>& vertexPositions);
+  VertexPositionGeometry(SurfaceMesh& mesh_,
+                         const Eigen::MatrixBase<T>& vertexPositions);
 
   // Boring destructor
   virtual ~VertexPositionGeometry() {}
 
-  // Construct a new geometry which is exactly the same as this one, on the same mesh.
-  // This is a deep copy, no quantites are shared, etc. Require counts/computed quantities are not copied.
+  // Construct a new geometry which is exactly the same as this one, on the
+  // same mesh. This is a deep copy, no quantites are shared, etc. Require
+  // counts/computed quantities are not copied.
   std::unique_ptr<VertexPositionGeometry> copy();
 
-  // Construct a new geometry which is exactly the same as this one, on another mesh.
-  // This is a deep copy, no quantites are shared, etc. Require counts/computed quantities are not copied.
-  // The meshes must be in correspondence (have the same connectivity).
-  std::unique_ptr<VertexPositionGeometry> reinterpretTo(SurfaceMesh& targetMesh);
+  // Construct a new geometry which is exactly the same as this one, on
+  // another mesh. This is a deep copy, no quantites are shared, etc. Require
+  // counts/computed quantities are not copied. The meshes must be in
+  // correspondence (have the same connectivity).
+  std::unique_ptr<VertexPositionGeometry>
+  reinterpretTo(SurfaceMesh& targetMesh);
 
 
   // == Members
@@ -54,6 +59,37 @@ public:
   double vertexGaussianCurvature(Vertex v) const;
   double vertexMinPrincipalCurvature(Vertex v) const;
   double vertexMaxPrincipalCurvature(Vertex v) const;
+
+  // CHANGED: for DDG
+  double meanEdgeLength() const;
+  double totalArea() const;
+  double cotan(Halfedge he) const;
+  double barycentricDualArea(Vertex v) const;
+  double angle(Corner c) const;
+  double dihedralAngle(Halfedge he) const;
+  Vector3 vertexNormalEquallyWeighted(Vertex v) const;
+  Vector3 vertexNormalAngleWeighted(Vertex v) const;
+  Vector3 vertexNormalSphereInscribed(Vertex v) const;
+  Vector3 vertexNormalAreaWeighted(Vertex v) const;
+  Vector3 vertexNormalGaussianCurvature(Vertex v) const;
+  Vector3 vertexNormalMeanCurvature(Vertex v) const;
+  double angleDefect(Vertex v) const;
+  double totalAngleDefect() const;
+  double scalarMeanCurvature(Vertex v) const;
+  double circumcentricDualArea(Vertex v) const;
+  std::pair<double, double> principalCurvatures(Vertex v) const;
+
+  SparseMatrix<double> laplaceMatrix() const;
+  SparseMatrix<double> massMatrix() const;
+  SparseMatrix<std::complex<double>> complexLaplaceMatrix() const;
+  Vector3 centerOfMass() const;
+  void normalize(const Vector3& origin, bool rescale);
+
+  SparseMatrix<double> buildExteriorDerivative1Form() const;
+  SparseMatrix<double> buildHodgeStar0Form() const;
+  SparseMatrix<double> buildHodgeStar1Form() const;
+  SparseMatrix<double> buildHodgeStar2Form() const;
+  SparseMatrix<double> buildExteriorDerivative0Form() const;
 
 protected:
   // Override the compute vertex positions method for embedded geometry

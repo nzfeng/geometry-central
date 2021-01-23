@@ -7,7 +7,11 @@ endif()
 
 # List of .cpp files to be compiled
 SET(SRCS
-
+  
+  # CHANGED: for DDG
+  ../../../core/src/geometry.cpp
+  ../../../core/src/discrete-exterior-calculus.cpp
+  
   surface/surface_mesh.cpp
   surface/manifold_surface_mesh.cpp
   surface/halfedge_factories.cpp  
