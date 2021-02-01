@@ -58,7 +58,7 @@ class VertexPositionGeometry : public EmbeddedGeometryInterface {
     double vertexMaxPrincipalCurvature(Vertex v) const;
 
     // CHANGED: for DDG
-    size_t eulerCharacteristic() const;
+    int eulerCharacteristic() const;
     double meanEdgeLength() const;
     double totalArea() const;
     double cotan(Halfedge he) const;
