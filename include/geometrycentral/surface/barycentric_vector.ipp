@@ -518,8 +518,8 @@ inline Face sharedFace(const BarycentricVector& u, const BarycentricVector& w) {
     case BarycentricVectorType::Face:
       for (Edge e : w.face.adjacentEdges()) {
         if (e == u.edge) return w.face;
-        break;
       }
+      break;
     case BarycentricVectorType::Edge:
       for (Face f : u.edge.adjacentFaces()) {
         for (Edge e : f.adjacentEdges()) {
