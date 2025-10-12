@@ -32,6 +32,7 @@ VertexData<double> SignedHeatSolver::computeDistance(const std::vector<Curve>& c
                                                      const std::vector<SurfacePoint>& points,
                                                      const SignedHeatOptions& options) {
 
+  std::vector<Curve> processedCurves = preprocessCurves(curves);
   Vector<std::complex<double>> Xt = integrateVectorHeatFlow(curves, points, options);
   return integrateVectorField(Xt, curves, points, options);
 }
@@ -54,6 +55,180 @@ void SignedHeatSolver::setDiffusionTimeCoefficient(double tCoef_) {
   timeUpdated = true;
   shortTime = tCoef_ * meanNodeDistance * meanNodeDistance;
   doubleVectorOp = doubleMassMat + shortTime * doubleConnectionLaplacian;
+}
+
+std::vector<Curve> SignedHeatSolver::preprocessCurves(const std::vector<Curve>& curves) {
+
+  // If two SurfacePoints are in a common or adjacent faces, return the faces.
+  auto adjacentFaces = [](const SurfacePoint& pA, const SurfacePoint& pB, Edge& commonEdge) -> std::pair<Face, Face> {
+    switch (pA.type) {
+    case SurfacePointType::Vertex:
+      switch (pB.type) {
+      case SurfacePointType::Vertex:
+        for (Face f : pA.vertex.adjacentFaces()) {
+          for (Edge e : f.adjacentEdges()) {
+            for (Face g : e.adjacentFaces()) {
+              for (Vertex v : g.adjacentVertices()) {
+                if (v == pB.vertex) {
+                  commonEdge = e;
+                  return std::make_pair(f, g);
+                }
+              }
+            }
+          }
+        }
+        break;
+      case SurfacePointType::Edge:
+        for (Face f : pA.vertex.adjacentFaces()) {
+          for (Edge e : f.adjacentEdges()) {
+            for (Face g : e.adjacentFaces()) {
+              for (Edge h : g.adjacentEdges()) {
+                if (h == pB.edge) {
+                  commonEdge = e;
+                  return std::make_pair(f, g);
+                }
+              }
+            }
+          }
+        }
+        break;
+      case SurfacePointType::Face:
+        for (Face f : pA.vertex.adjacentFaces()) {
+          for (Edge e : f.adjacentEdges()) {
+            for (Face g : e.adjacentFaces()) {
+              if (g == pB.face) {
+                commonEdge = e;
+                return std::make_pair(f, g);
+              }
+            }
+          }
+        }
+        break;
+      }
+      break;
+    case SurfacePointType::Edge:
+      switch (pB.type) {
+      case SurfacePointType::Vertex:
+        for (Face f : pA.edge.adjacentFaces()) {
+          for (Edge e : f.adjacentEdges()) {
+            for (Face g : e.adjacentFaces()) {
+              for (Vertex v : g.adjacentVertices()) {
+                if (v == pB.vertex) {
+                  commonEdge = e;
+                  return std::make_pair(f, g);
+                }
+              }
+            }
+          }
+        }
+        break;
+      case SurfacePointType::Edge:
+        for (Face f : pA.edge.adjacentFaces()) {
+          for (Edge e : f.adjacentEdges()) {
+            for (Face g : e.adjacentFaces()) {
+              for (Edge h : g.adjacentEdges()) {
+                if (h == pB.edge) {
+                  commonEdge = e;
+                  return std::make_pair(f, g);
+                }
+              }
+            }
+          }
+        }
+        break;
+      case SurfacePointType::Face:
+        for (Face f : pA.edge.adjacentFaces()) {
+          for (Edge e : f.adjacentEdges()) {
+            for (Face g : e.adjacentFaces()) {
+              if (g == pB.face) {
+                commonEdge = e;
+                return std::make_pair(f, g);
+              }
+            }
+          }
+        }
+        break;
+      }
+      break;
+    case SurfacePointType::Face:
+      switch (pB.type) {
+      case SurfacePointType::Vertex:
+        for (Edge e : pA.face.adjacentFaces()) {
+          for (Face g : e.adjacentFaces()) {
+            for (Vertex v : g.adjacentVertices()) {
+              if (v == pB.vertex) {
+                commonEdge = e;
+                return std::make_pair(pA.face, g);
+              }
+            }
+          }
+        }
+        break;
+      case SurfacePointType::Edge:
+        for (Edge e : pA.face.adjacentFaces()) {
+          for (Face g : e.adjacentFaces()) {
+            for (Edge h : g.adjacentEdges()) {
+              if (h == pB.edge) {
+                commonEdge = e;
+                return std::make_pair(pA.face, g);
+              }
+            }
+          }
+        }
+        break;
+      case SurfacePointType::Face:
+        for (Edge e : pA.face.adjacentFaces()) {
+          for (Face g : e.adjacentFaces()) {
+            if (g == pB.face) {
+              commonEdge = e;
+              return std::make_pair(pA.face, g);
+            }
+          }
+        }
+        break;
+      }
+      break;
+    }
+    commonEdge = Edge();
+    return std::make_pair(Face(), Face());
+  };
+
+  // If there are gaps in the curves (i.e. curves are not sampled densely along the mesh), then there is an ambiguity of
+  // how to connect up the points into curves. Rather than, for example, automatically connecting up curves using a
+  // geodesic path -- which would impose curves that the user might not have meant -- we simply break up the input
+  // curves into components that do reflect how they're sampled.
+  std::vector<Curve> newCurves;
+  for (const Curve& curve : curves) {
+    newCurves.emplace_back();
+    newCurves.back().isSigned = curve.isSigned;
+    size_t nNodes = curve.nodes.size();
+    for (size_t i = 0; i < nNodes - 1; i++) {
+      const SurfacePoint& pA = curve.nodes[i];
+      const SurfacePoint& pB = curve.nodes[i + 1];
+      newCurves.back().nodes.push_back(pA);
+      Face commonFace = sharedFace(pA, pB);
+      if (commonFace == Face()) {
+        if (curve.isSigned) {
+          // If the curve betwen pA and pB is unclear, but pA and pB are still in adjacent faces, then we can at
+          // least figure out the edge crossing. But don't do this for optimization for unsigned curves, which are
+          // still supposed to be restricted to mesh edges.
+          Edge commonEdge;
+          std::pair<Face, Face> facePair = adjacentFaces(pA, pB, commonEdge);
+          if (facePair.first != Face() && facePair.second != Face()) {
+            // We want to solve for the edge crossing p s.t. <e, \hat{pA - p}> = -<e, \hat{pB - p}>.
+            BarycentricVector eVec(commonEdge, Vector2(1, -1)); // pick arbitrary direction for edge
+          }
+        } else {
+          // Create new curve
+          newCurves.emplace_back();
+          newCurves.back().isSigned = curve.isSigned;
+        }
+      }
+    }
+    // Don't forget the last point
+    newCurves.back().nodes.push_back(curve.nodes[nNodes - 1]);
+  }
+  return newCurves;
 }
 
 Vector<std::complex<double>> SignedHeatSolver::integrateVectorHeatFlow(const std::vector<Curve>& curves,
