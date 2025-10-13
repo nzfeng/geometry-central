@@ -64,6 +64,8 @@ The diffusion time can also be changed using the following function.
 
     Re-computes the time used for short time heat flow `tCoef * h^2`, where `h` is the mean distance between nodes of the mesh.
 
+Note: On triangle meshes, each mesh edge crossed by an input curve should be explicitly represented by a SurfacePoint (otherwise the curve's geometry is not fully specified). If this is not the case, the code internally partitions input curves so that this condition is satisfied; the robustness of the heat method should fill in small gaps. Depending on how sparsely your curve is sampled, this may produce curve components with fewer than two nodes, which will be ignored; if many of your curves have fewer than two nodes, consider [FlipOut geodesics](../flip_geodesics) for shortest-path completion of curves.
+
 ## Helper Types
 
 ### Curves

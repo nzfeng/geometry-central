@@ -61,6 +61,7 @@ private:
   SparseMatrix<double> massMat, doubleMassMat, doubleConnectionLaplacian, doubleVectorOp;
 
   // Helpers
+  std::vector<Curve> preprocessCurves(const std::vector<Curve>& curves) const;
   Vector<std::complex<double>> integrateVectorHeatFlow(const std::vector<Curve>& curves,
                                                        const std::vector<SurfacePoint>& points,
                                                        const SignedHeatOptions& options);
