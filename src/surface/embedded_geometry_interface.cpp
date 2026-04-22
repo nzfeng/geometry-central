@@ -445,9 +445,11 @@ void EmbeddedGeometryInterface::computeSimplePolygonVertexConnectionLaplacian() 
   simplePolygonLaplacianQ.ensureHave();
   vertexNormalsQ.ensureHave();
   vertexTangentBasisQ.ensureHave();
+  vertexIndicesQ.ensureHave();
 
   // Compute rotation between tangent plane at vertex i and at vertex j.
-  HalfedgeData<std::complex<double>> transportVectorsAlongHalfedge(mesh);
+  // Rotations are not just along halfedges, but between any pair of vertices sharing a face.
+  std::map<std::pair<size_t, size_t>, std::complex<double>> rotations; // entry at ij = rotation from i to j
   for (Face f : mesh.faces()) {
     for (Halfedge he : f.adjacentHalfedges()) {
       Vertex vi = he.tailVertex();
@@ -463,7 +465,16 @@ void EmbeddedGeometryInterface::computeSimplePolygonVertexConnectionLaplacian() 
         R_ei = ei.rotateAround(axis, angle);
       }
       std::complex<double> r_ij = std::complex<double>(Vector2::fromAngle(angleInPlane(R_ei, ej, nj)));
-      transportVectorsAlongHalfedge[he] = std::conj(r_ij);
+
+      size_t viIdx = vertexIndices[vi];
+      size_t vjIdx = vertexIndices[vj];
+      if (viIdx > vjIdx) {
+        viIdx = vertexIndices[vj];
+        vjIdx = vertexIndices[vi];
+        r_ij = std::conj(r_ij);
+      }
+      std::pair<size_t, size_t> key = std::make_pair(viIdx, vjIdx);
+      rotations[key] = r_ij;
     }
   }
 
@@ -479,15 +490,10 @@ void EmbeddedGeometryInterface::computeSimplePolygonVertexConnectionLaplacian() 
         triplets.emplace_back(it.row(), it.col(), it.value());
         continue;
       }
-      // find halfedge ij
-      Halfedge he_ij = Halfedge();
-      for (Halfedge he : mesh.vertex(i).outgoingHalfedges()) {
-        if (vertexIndices[he.tipVertex()] == j || vertexIndices[he.tailVertex()] == j) {
-          he_ij = he;
-          break;
-        }
-      }
-      triplets.emplace_back(it.row(), it.col(), it.value() * transportVectorsAlongHalfedge[he_ij.twin()]);
+      bool sgn = (i < j);
+      std::pair<size_t, size_t> key = sgn ? std::make_pair(i, j) : std::make_pair(j, i);
+      std::complex<double> rot = sgn ? rotations[key] : std::conj(rotations[key]);
+      triplets.emplace_back(it.row(), it.col(), it.value() * rot);
     }
   }
   simplePolygonVertexConnectionLaplacian.setFromTriplets(triplets.begin(), triplets.end());
